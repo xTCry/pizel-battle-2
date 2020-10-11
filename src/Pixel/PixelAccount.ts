@@ -19,6 +19,7 @@ export class WarriorAccount extends VKUser {
     public ttl: number = 30e3;
     private _wait: number = 0;
     private retryTtl = null;
+    private retryCooldown = 0;
     private retryTime = 1e3;
     private aliveTimer = null;
     private killTimer = null;
@@ -118,12 +119,13 @@ export class WarriorAccount extends VKUser {
                 return this.onOpen();
             };
 
-            this.ws.onerror = () => {
+            this.ws.onerror = (event) => {
+                this.debugError('WS Error', event.message);
                 return this.reconnect();
             };
 
             this.ws.onclose = () => {
-                this.debug(`Connection closed`);
+                this.debug('Connection closed');
                 this.reconnect();
             };
 
@@ -136,7 +138,7 @@ export class WarriorAccount extends VKUser {
 
                 if ('restart' === e.data) {
                     this.retryTime = 1e3 * Math.random() + 5e3;
-                    this.onOffline();
+                    this.debug('I am offline');
                     return;
                 }
 
@@ -147,7 +149,7 @@ export class WarriorAccount extends VKUser {
                         e.data.startsWith('NO_ARGS')
                     ) {
                         // this.reconnect = () => {};
-                        this.retryTime = 3e3 * Math.random() + 5e3;
+                        this.retryTime = null;
                         this.debugError('Error WS', e.data);
                         return;
                     }
@@ -188,30 +190,25 @@ export class WarriorAccount extends VKUser {
 
         this.resetAliveTimer();
 
-        // this.loadField().then(() => {
-        //     this.onOnline();
-        // });
-
+        // Init laod original main fiel
         if (this.isMainListener && BattleField.originalFieldLoadingState === LoadingState.NONE) {
             BattleField.loadFieldData(this).then();
         }
     }
 
-    protected onOnline() {
-        // ...
-    }
-
-    protected onOffline() {
-        this.debug('I am offline');
-    }
 
     reconnect() {
         clearTimeout(this.retryTtl);
         this.connected = false;
 
+        if (!this.retryTime || this.retryCooldown > 0) {
+            return;
+        }
+
         this.retryTtl = setTimeout(() => {
             this._start();
-        }, this.retryTime);
+            this.retryCooldown++;
+        }, this.retryTime + 1e3);
         this.retryTime *= 1.3;
     }
 
@@ -270,7 +267,7 @@ export class WarriorAccount extends VKUser {
                 const { bomb, freeze, pixel, singlePixel, usageLost, debug } = payload.v;
                 // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.z)(bomb, freeze, pixel, singlePixel, usageLost));
 
-                this.debug('MESSAGE_TYPE_SCORE: ', payload.v);
+                // this.debug('MESSAGE_TYPE_SCORE: ', payload.v);
                 if (debug !== undefined) {
                     // this.debug('WS Debug: ', debug);
                 }
@@ -278,6 +275,7 @@ export class WarriorAccount extends VKUser {
             }
 
             case MessageType.MESSAGE_TYPE_ONLINE: {
+                this.retryCooldown--;
                 this.online(payload.v);
                 break;
             }
@@ -317,7 +315,9 @@ export class WarriorAccount extends VKUser {
 
         if (online !== undefined) {
             BattleField.sayOnline(online);
-            statOnline(online);
+            if (this.isMainListener) {
+                statOnline(online);
+            }
             // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.w)(online));
         }
 

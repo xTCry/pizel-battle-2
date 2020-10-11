@@ -57,13 +57,13 @@ export abstract class VKUser {
 
     public debug(...args: any) {
         if (this.isDebug) {
-            log.info.yellow(`[@${this.userId}]`, ...args);
+            log.info.yellow(`[@${this.userId.toString().substr(1, 5)}]`, ...args);
         }
     }
 
     public debugError(...args: any) {
         if (this.isDebug) {
-            log.error.yellow(`[@${this.userId}]`, ...args);
+            log.error.yellow(`[@${this.userId.toString().substr(1, 5)}]`, ...args);
         }
     }
 }

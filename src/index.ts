@@ -1,4 +1,4 @@
-import { initPaths } from './tools';
+import { initPaths, readFile } from './tools';
 import { config } from './config';
 import BattleField from './Pixel/BattleField';
 import TemplateField from './TemplateField';
@@ -15,7 +15,7 @@ Readline.Prompt();
     return await InitApp();
 })();
 
-async function test() {
+async function addMainWarrior() {
     const embedURL = config.get('TEST_EMBED_URL');
     if (!embedURL) {
         log.info('Empty embed url');
@@ -52,29 +52,45 @@ async function InitApp() {
     await TemplateField.loadTemplateField();
     TemplateField.watchFolder('./data/');
 
-    await test();
+    await addMainWarrior();
+    // return
 
-    /*
-    // Load saved users
-    const workdUsers = [];
-    try {
-        const usersData = await readFile(`users.dat`);
-        const users = usersData
-            .split('\n')
-            .filter((e) => e.length > 10)
-            .map((e) => e.split('::'))
-            .filter((e) => e.length > 2);
-
-        for (const user of users) {
-            const [TYPE, userId, token, EmbedURL, _other] = user;
-            if (TYPE == 'XT2') {
-                workdUsers.push({ userId, token, EmbedURL });
-            }
-        }
-    } catch (error) {
-        console.error(error);
+    const usersDataContent = (await readFile('users.data'))
+    if (!usersDataContent) {
+        log.error('Not found file ./data/users.data');
+        return;
     }
 
+    let arUsersData = [];
+    const usersData = usersDataContent
+        .split('\n')
+        .filter((e) => e.length > 0)
+        .map((e) => e.replace(/\r?\n|\r/g, '').split('::'))
+        .filter((e) => e.length > 2);
+
+    if (!usersData.length) {
+        log.error('Empty users data from ./data/users.data');
+        return;
+    }
+
+    for (const user of usersData) {
+        const [userId, token, , , embedURL] = user;
+        arUsersData.push({ userId, token, embedURL });
+    }
+
+    // log.info.green(`Load warroirs...`, arUsersData);
+
+    const Warroirs = await Promise.all(
+        arUsersData.filter((e) => !!e.embedURL).map(({ embedURL }) => BattleField.addWarrior({ embedURL }))
+    );
+
+    log.info.green(`Loaded ${Warroirs.length}/${arUsersData.length} Warroirs`);
+
+    BattleField.Go();
+
+    // ...
+
+    /*
     let successLoaded = 0;
     accounts = [];
 

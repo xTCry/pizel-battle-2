@@ -65,12 +65,14 @@ export function toArrayBuffer(buf) {
 }
 
 export async function readFile(file) {
-    return (await Fs.readFile('./data/' + file)).toString();
+    const filePath = `./data/${file}`;
+    if (!Fs.existsSync(filePath)) return undefined;
+    return (await Fs.readFile(filePath)).toString();
 }
 
 export async function pushToFile(file, data) {
     try {
-        await Fs.appendFile('./data/' + file, `${data}\n`);
+        await Fs.appendFile(`./data/${file}`, `${data}\n`);
     } catch (e) {}
 }
 

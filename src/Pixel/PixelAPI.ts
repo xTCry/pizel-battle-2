@@ -32,6 +32,7 @@ export class PixelAPI {
         const contentType = isPost ? { 'Content-Type': 'application/json', Accept: 'application/json' } : {};
 
         // log.info.lightYellow('API request url', url);
+        // log.info.lightYellow('API this.embedURL', this.embedURL);
 
         try {
             const response = await Axios.request({

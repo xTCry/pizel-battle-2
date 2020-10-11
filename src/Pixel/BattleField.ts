@@ -4,6 +4,7 @@ import { WarriorAccount } from './PixelAccount';
 import { VKUserParams } from '../vkUser';
 import { LoadingState } from '../types';
 import { log } from '../logger';
+import { HealthCheck } from './HealthCheck';
 
 enum BattleState {
     NONE = 0,
@@ -21,6 +22,8 @@ export class CBattleField {
     protected warriors: Map<number, WarriorAccount> = new Map();
 
     private lastSayOnline = 0;
+
+    private healthCheck: HealthCheck = new HealthCheck();
 
     /**
      * Наше загруженное изображение в пикселях
@@ -62,8 +65,13 @@ export class CBattleField {
         const warrior = new WarriorAccount(payload);
         await warrior.start();
 
+        if (this.warriors.has(warrior.userId)) {
+            log.warn('This warrior already added @', warrior.userId);
+            return null;
+        }
+
         this.warriors.set(warrior.userId, warrior);
-        this.Go();
+        // this.Go();
         return warrior;
     }
 
@@ -109,6 +117,7 @@ export class CBattleField {
     }
 
     public onNewPixel(pixel: Pixel) {
+        this.healthCheck.onPixel(pixel);
         this.mainCanvas[pixel.offset] = pixel.colorId;
     }
 
@@ -249,13 +258,21 @@ export class CBattleField {
                     const [userId, warrior] = value as [number, WarriorAccount];
 
                     this.mainCanvas[pixelId] = color;
-                    let pixel = new Pixel(x, y, color);
+                    const pixel = new Pixel(x, y, color);
+                    this.healthCheck.onPlace(pixel, warrior);
                     warrior.sendPixel(pixel);
-                    warrior.debug('Draw to', pixel);
+                    warrior.debug('Draw to', pixel.toString());
+                    if (true) {
+                        setTimeout(() => {
+                            if (!this.healthCheck.check(pixel)) {
+                                warrior.debug('I am alive? (Pixel not ping)');
+                            }
+                        }, 10e3);
+                    }
                 }
                 // ...
 
-                await sleep(this.loopTtl * Math.random() + 2e3);
+                await sleep(this.loopTtl * Math.random() + 5e3);
             } catch (error) {
                 log.error('Loop error', error);
             }

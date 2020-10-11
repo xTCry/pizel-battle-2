@@ -221,7 +221,7 @@ export class Pixel {
     }
 
     get [Symbol.toStringTag]() {
-        return `Pixel[${this.x};${this.y}](${this.colorId})'${this.flag ? ` ^${this.flag}` : ''}${
+        return `Pixel(${this.x};${this.y};${this.colorId})${this.flag ? ` ^${this.flag}` : ''}${
             this.userId ? ` @${this.userId}` : ''
         }`;
     }
