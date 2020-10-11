@@ -289,6 +289,9 @@ export class CBattleField {
                         setTimeout(() => {
                             if (!this.healthCheck.check(pixel2)) {
                                 warrior.debug('I am alive? (Pixel not ping)');
+                                if (true) {
+                                    warrior.resetWait();
+                                }
                             }
                         }, 10e3);
                     }

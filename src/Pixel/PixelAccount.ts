@@ -24,6 +24,8 @@ export class WarriorAccount extends VKUser {
     private aliveTimer = null;
     private killTimer = null;
 
+    public arsenal = { bomb: 0, freeze: 0, pixel: 0, singlePixel: 0 };
+
     constructor(params: VKUserParams, realGroupId?: number) {
         super(params);
 
@@ -159,7 +161,14 @@ export class WarriorAccount extends VKUser {
                         return;
                     }
 
+                    if ('TOO_FAST_MESSAGE' === e.data) {
+                        // ...
+                    }
+
                     try {
+                        // if (this.isMainListener) {
+                        //     this.debug('payload', e.data);
+                        // }
                         let payload = JSON.parse(e.data);
                         this.dispatch(payload);
                     } catch (error) {
@@ -205,11 +214,13 @@ export class WarriorAccount extends VKUser {
     reconnect() {
         clearTimeout(this.retryTtl);
         this.connected = false;
+        // this.ws = null;
 
         if (!this.retryTime || this.retryCooldown > 0) {
             return;
         }
 
+        this._wait = Date.now() + 59e3;
         this.retryTtl = setTimeout(() => {
             this._start();
             this.retryCooldown++;
@@ -229,7 +240,7 @@ export class WarriorAccount extends VKUser {
                 this.ws.close();
                 this.ws = null;
             } catch (e) {
-                console.error(e);
+                this.debugError('Error close', e);
             }
         }
     }
@@ -239,24 +250,22 @@ export class WarriorAccount extends VKUser {
         clearTimeout(this.killTimer);
 
         this.aliveTimer = setTimeout(() => {
-            // this.debug('Reach ALIVE timer!');
-            try {
-                // this.debug('Send PING');
-                this.sendDebug('ping');
-                this.killTimer = setTimeout(() => {
-                    this.close();
-                    // this.debug('Kill tick');
-                    // this.reconnect();
-                }, 2e3);
-            } catch (t) {
-                console.error(t);
-            }
+            // this.debug('Send PING');
+            this.sendDebug('ping');
+            this.killTimer = setTimeout(() => {
+                this.close();
+                // this.debug('Kill tick');
+                // this.reconnect();
+            }, 2e3);
         }, 2e3);
+    }
+
+    resetWait() {
+        this._wait = 0;
     }
 
     sendDebug(e: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
         if (!this.ws) {
-            // throw new Error('ws not started yet');
             return;
         }
 
@@ -272,16 +281,19 @@ export class WarriorAccount extends VKUser {
 
             case MessageType.MESSAGE_TYPE_SCORE: {
                 const { bomb, freeze, pixel, singlePixel, usageLost, debug } = payload.v;
-                if (bomb) {
+                if (bomb !== this.arsenal.bomb) {
                     this.debug('[SCORE!] bomb: ', bomb);
                 }
-                if (freeze) {
+                if (freeze !== this.arsenal.freeze) {
+                    this.arsenal.freeze = freeze;
                     this.debug('[SCORE!] freeze: ', freeze);
                 }
-                if (pixel) {
+                if (pixel !== this.arsenal.pixel) {
+                    this.arsenal.pixel = pixel;
                     this.debug('[SCORE!] pixel: ', pixel);
                 }
-                if (singlePixel) {
+                if (singlePixel !== this.arsenal.singlePixel) {
+                    this.arsenal.singlePixel = singlePixel;
                     this.debug('[SCORE!] singlePixel: ', singlePixel);
                 }
                 // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.z)(bomb, freeze, pixel, singlePixel, usageLost));
