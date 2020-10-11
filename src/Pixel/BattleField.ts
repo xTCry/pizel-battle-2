@@ -6,7 +6,7 @@ import { LoadingState } from '../types';
 import { log } from '../logger';
 import { HealthCheck } from './HealthCheck';
 
-enum BattleState {
+export enum BattleState {
     NONE = 0,
     WAIT = 1,
     DRAWING = 2,
@@ -108,12 +108,17 @@ export class CBattleField {
     public sayOnline(e: number) {
         if (Date.now() - this.lastSayOnline > 30e3) {
             log /* .info */.bgDarkGray(`Online: ${e} users`);
+            log /* .info */.bgDarkGray(`Active [${this.aliveWarriors.size}/${this.warriors.size}]`);
             this.lastSayOnline = Date.now();
         }
     }
 
     public Go() {
         this.battleState = BattleState.DRAWING;
+    }
+
+    public Stop() {
+        this.battleState = BattleState.WAIT;
     }
 
     public onNewPixel(pixel: Pixel) {

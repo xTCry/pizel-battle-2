@@ -9,11 +9,7 @@ import { Pixel } from './Pixel/Pixel';
 Readline.Prompt();
 
 // Start Start app
-(async function () {
-    log.info('Loading...');
-
-    return await InitApp();
-})();
+InitApp().then();
 
 async function addMainWarrior() {
     const embedURL = config.get('TEST_EMBED_URL');
@@ -47,7 +43,18 @@ async function addMainWarrior() {
     });
 }
 
+Readline.on('start', () => {
+    BattleField.Go();
+    log.info.blue('Battle started');
+});
+Readline.on('stop', () => {
+    BattleField.Stop();
+    log.info.blue('Battle stopped');
+});
+
 async function InitApp() {
+    log.info('Loading...');
+
     await initPaths(['./data/', './logs/']);
     await TemplateField.loadTemplateField();
     TemplateField.watchFolder('./data/');
@@ -86,7 +93,8 @@ async function InitApp() {
 
     log.info.green(`Loaded ${Warroirs.length}/${arUsersData.length} Warroirs`);
 
-    BattleField.Go();
+    log.info.green.underline('Enter start');
+    // BattleField.Go();
 
     // ...
 

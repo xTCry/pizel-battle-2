@@ -159,6 +159,7 @@ export class WarriorAccount extends VKUser {
                         this.dispatch(payload);
                     } catch (error) {
                         this.debugError(error);
+                        this.debug('ftw payload data', e.data);
                     }
                 } else if (this.isMainListener) {
                     try {
