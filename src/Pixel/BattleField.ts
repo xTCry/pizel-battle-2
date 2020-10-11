@@ -1,7 +1,7 @@
 import { sleep } from '../tools';
 import { Pixel } from './Pixel';
 import { WarriorAccount } from './PixelAccount';
-import { VKUserParams } from '../vkUser';
+import { VKUserParams } from '../VKUser';
 import { LoadingState } from '../types';
 import { log } from '../logger';
 import { HealthCheck } from './HealthCheck';
