@@ -1,7 +1,7 @@
 import Fs from 'fs-extra';
 import { createCanvas, loadImage } from 'canvas';
-import { Pixel } from './Pixel/Pixel';
-import { log } from './logger';
+import { Pixel } from '../src/Pixel/Pixel';
+import { log } from '../src/logger';
 
 let myPixels = {};
 
@@ -11,8 +11,8 @@ const startLoadImage = async () => {
     const ctx = canvas.getContext('2d');
 
     let src: string | Buffer = null;
-    if (Fs.existsSync('./data/drawme.png')) {
-        src = await Fs.readFile('./data/drawme.png');
+    if (Fs.existsSync('./data/template.png')) {
+        src = await Fs.readFile('./data/template.png');
         log.info('Try load saved drawn file...');
     }
 

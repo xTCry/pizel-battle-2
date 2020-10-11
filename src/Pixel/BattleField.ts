@@ -1,5 +1,5 @@
-import { sleep } from '../tools';
-import { Pixel } from './Pixel';
+import { rand, sleep } from '../tools';
+import { colorIndexDecode, Pixel } from './Pixel';
 import { WarriorAccount } from './PixelAccount';
 import { VKUserParams } from '../VKUser';
 import { LoadingState } from '../types';
@@ -28,7 +28,8 @@ export class CBattleField {
     /**
      * Наше загруженное изображение в пикселях
      */
-    public myPixels = {};
+    // public myPixels = {};
+    public arPixels: Pixel[] = [];
 
     /**
      * Состояние заргузки оригинального полотна
@@ -63,10 +64,15 @@ export class CBattleField {
 
     public async addWarrior(payload: VKUserParams) {
         const warrior = new WarriorAccount(payload);
-        await warrior.start();
+        const loaded = await warrior.start();
+
+        if (!loaded) {
+            log.warn(`Failed start @${warrior.userId}`);
+            return null;
+        }
 
         if (this.warriors.has(warrior.userId)) {
-            log.warn('This warrior already added @', warrior.userId);
+            log.warn(`This warrior already added @${warrior.userId}`);
             return null;
         }
 
@@ -108,7 +114,8 @@ export class CBattleField {
     public sayOnline(e: number) {
         if (Date.now() - this.lastSayOnline > 30e3) {
             log /* .info */.bgDarkGray(`Online: ${e} users`);
-            log /* .info */.bgDarkGray(`Active [${this.aliveWarriors.size}/${this.warriors.size}]`);
+            log /* .info */.bgDarkGray(`Alive [${this.aliveWarriors.size}/${this.warriors.size}]`);
+            log /* .info */.bgDarkGray(`Connected [${this.connectedWarriors.size}/${this.warriors.size}]`);
             this.lastSayOnline = Date.now();
         }
     }
@@ -136,8 +143,8 @@ export class CBattleField {
 
             for (let y = 0; y < Pixel.MAX_HEIGHT; y++) {
                 for (let x = 0; x < Pixel.MAX_WIDTH; x++) {
-                    const color = Pixel.colorIndexDecode[pixelsData[y * Pixel.MAX_WIDTH + x]];
-                    this.onNewPixel(new Pixel(x, y, color));
+                    const color = colorIndexDecode[pixelsData[y * Pixel.MAX_WIDTH + x]];
+                    this.onNewPixel(new Pixel({ x: x, y: y, colorId: color }));
                 }
             }
 
@@ -244,14 +251,20 @@ export class CBattleField {
 
                 const warriors = aliveWarriors.entries();
 
-                const pixelsKeys = Object.keys(this.myPixels).sort(() => Math.random() - 0.5);
+                // const pixelsKeys = Object.keys(this.myPixels).sort(() => Math.random() - 0.5);
                 // log.bright.info('pixelsKeys', pixelsKeys.length);
 
-                for (const pixelId of pixelsKeys) {
+                /* for (const pixelId of pixelsKeys) {
                     const { x, y } = Pixel.unOffset(parseInt(pixelId, 10));
                     const color = this.myPixels[pixelId];
-
                     if (this.mainCanvas[pixelId] === color) {
+                        continue;
+                    } */
+
+                const pixels = this.arPixels.sort((a, b) => (rand(0, 5) === 3 ? 1 : b.importance - a.importance));
+
+                for (const pixel of pixels) {
+                    if (this.mainCanvas[pixel.offset] === pixel.colorId) {
                         continue;
                     }
 
@@ -262,14 +275,19 @@ export class CBattleField {
                     }
                     const [userId, warrior] = value as [number, WarriorAccount];
 
-                    this.mainCanvas[pixelId] = color;
-                    const pixel = new Pixel(x, y, color);
-                    this.healthCheck.onPlace(pixel, warrior);
-                    warrior.sendPixel(pixel);
-                    warrior.debug('Draw to', pixel.toString());
+                    this.mainCanvas[pixel.offset] = pixel.colorId;
+                    // this.mainCanvas[pixelId] = color;
+                    // const pixel = new Pixel({ x: x, y: y, colorId: color });
+                    const pixel2 = new Pixel({ x: pixel.x, y: pixel.y, colorId: pixel.colorId });
+                    warrior.sendPixel(pixel2);
+                    warrior.debug('Draw to', pixel2.toString());
+
+                    await sleep(50);
+
                     if (true) {
+                        this.healthCheck.onPlace(pixel2, warrior);
                         setTimeout(() => {
-                            if (!this.healthCheck.check(pixel)) {
+                            if (!this.healthCheck.check(pixel2)) {
                                 warrior.debug('I am alive? (Pixel not ping)');
                             }
                         }, 10e3);
@@ -289,6 +307,18 @@ export class CBattleField {
 
         for (const [userId, acc] of this.warriors.entries()) {
             if (acc.connected && acc.isAlive) {
+                warriorsMap.set(userId, acc);
+            }
+        }
+
+        return warriorsMap;
+    }
+
+    get connectedWarriors(): Map<number, WarriorAccount> {
+        let warriorsMap = new Map();
+
+        for (const [userId, acc] of this.warriors.entries()) {
+            if (acc.connected) {
                 warriorsMap.set(userId, acc);
             }
         }

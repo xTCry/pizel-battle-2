@@ -73,9 +73,9 @@ export class CLogger {
         const month = (time.getMonth() + 1).toString().padStart(2, '0');
         const day = time.getDate().toString().padStart(2, '0');
         const hour = time.getHours().toString().padStart(2, '0');
-        const minute = ''; //time.getMinutes().toString().padStart(2, '0');
+        const minute = time.getMinutes().toString().padStart(2, '0');
 
-        return `${name}-${year}${month}${day}-${hour}${minute}-${index}.log`;
+        return `${year}${month}${day}-${hour}/${name}-${minute}-${index}.log`;
     };
 }
 export const Logger = new CLogger();

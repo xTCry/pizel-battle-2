@@ -4,9 +4,7 @@ import randomUseragent from 'random-useragent';
 import safeEval from 'safe-eval';
 import { JSDOM } from 'jsdom';
 
-
 export const ISDEV = false;
-
 
 export const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

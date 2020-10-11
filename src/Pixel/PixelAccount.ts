@@ -1,4 +1,4 @@
-import { OmyEval, statOnline } from '../tools';
+import { OmyEval, sleep, statOnline } from '../tools';
 import { VKUser, VKUserParams } from '../vkUser';
 import BattleField from './BattleField';
 import { PixelReader } from './PixelReader';
@@ -74,14 +74,18 @@ export class WarriorAccount extends VKUser {
         return this._wait - Date.now() < 1;
     }
 
-    protected async _start() {
+    protected async _start(retry: number = 0) {
         const { data: response, error } = await this.api.get('start');
 
         if (error) {
             this.loadingState = LoadingState.ERROR;
             // throw new Error(error.msg);
             this.debugError('User load error', error.msg);
-            return;
+            if (retry < 2) {
+                await sleep(1e3);
+                return this._start(++retry);
+            }
+            return false;
         }
 
         let { url, data, deadline } = response.response;
@@ -100,6 +104,7 @@ export class WarriorAccount extends VKUser {
         }
 
         this.loadingState = LoadingState.LOADED;
+        return true;
     }
 
     async run(connection: string, data: string) {
@@ -197,7 +202,6 @@ export class WarriorAccount extends VKUser {
         }
     }
 
-
     reconnect() {
         clearTimeout(this.retryTtl);
         this.connected = false;
@@ -235,13 +239,14 @@ export class WarriorAccount extends VKUser {
         clearTimeout(this.killTimer);
 
         this.aliveTimer = setTimeout(() => {
+            // this.debug('Reach ALIVE timer!');
             try {
-                try {
-                    this.sendDebug('ping');
-                } catch (e) {}
+                // this.debug('Send PING');
+                this.sendDebug('ping');
                 this.killTimer = setTimeout(() => {
                     this.close();
-                    this.debug('Kill tick');
+                    // this.debug('Kill tick');
+                    // this.reconnect();
                 }, 2e3);
             } catch (t) {
                 console.error(t);
@@ -251,7 +256,8 @@ export class WarriorAccount extends VKUser {
 
     sendDebug(e: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
         if (!this.ws) {
-            throw new Error('ws not started yet');
+            // throw new Error('ws not started yet');
+            return;
         }
 
         this.ws.send(e);
@@ -266,6 +272,18 @@ export class WarriorAccount extends VKUser {
 
             case MessageType.MESSAGE_TYPE_SCORE: {
                 const { bomb, freeze, pixel, singlePixel, usageLost, debug } = payload.v;
+                if (bomb) {
+                    this.debug('[SCORE!] bomb: ', bomb);
+                }
+                if (freeze) {
+                    this.debug('[SCORE!] freeze: ', freeze);
+                }
+                if (pixel) {
+                    this.debug('[SCORE!] pixel: ', pixel);
+                }
+                if (singlePixel) {
+                    this.debug('[SCORE!] singlePixel: ', singlePixel);
+                }
                 // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.z)(bomb, freeze, pixel, singlePixel, usageLost));
 
                 // this.debug('MESSAGE_TYPE_SCORE: ', payload.v);
@@ -358,6 +376,12 @@ export class WarriorAccount extends VKUser {
 
     public sendPixel(pixel: Pixel) {
         if (!this.ws) {
+            this.debugError('HelloMthrFcr #1');
+            return;
+        }
+
+        if (!this.isAlive) {
+            this.debug('I am tried');
             return;
         }
 

@@ -28,11 +28,11 @@ export abstract class VKUser {
         this.password = password;
     }
 
-    public async start() {
+    public async start(): Promise<boolean> {
         this.loadingState = LoadingState.LAODING;
         await this.extractEmbedURL();
         this.debug('User embedURL extracted');
-        await this._start();
+        return await this._start();
     }
 
     protected async extractEmbedURL(hi: boolean = false) {
@@ -53,17 +53,17 @@ export abstract class VKUser {
         if (!hi) this.extractEmbedURL(true);
     }
 
-    protected abstract async _start(): Promise<void>;
+    protected abstract async _start(): Promise<boolean>;
 
     public debug(...args: any) {
         if (this.isDebug) {
-            log.info.yellow(`[@${this.userId.toString().substr(1, 5)}]`, ...args);
+            log.info.yellow(`[@${this.userId}]`, ...args);
         }
     }
 
     public debugError(...args: any) {
         if (this.isDebug) {
-            log.error.yellow(`[@${this.userId.toString().substr(1, 5)}]`, ...args);
+            log.error.yellow(`[@${this.userId}]`, ...args);
         }
     }
 }

@@ -1,22 +1,22 @@
-import { Pixel } from "./Pixel";
-import { WarriorAccount } from "./PixelAccount";
+import { Pixel } from './Pixel';
+import { WarriorAccount } from './PixelAccount';
 
 export class HealthCheck {
-    private map: Map<Pixel['hash'], WarriorAccount> = new Map();
+    private map: Map<Pixel['hash2'], WarriorAccount> = new Map();
 
     public onPlace(pixel: Pixel, warrior: WarriorAccount) {
-        this.map.set(pixel.hash, warrior);
+        this.map.set(pixel.hash2, warrior);
     }
 
     public onPixel(pixel: Pixel) {
-        if (this.map.has(pixel.hash)) {
-            this.map.delete(pixel.hash);
+        if (this.map.has(pixel.hash2)) {
+            this.map.delete(pixel.hash2);
         }
     }
 
     public check(pixel: Pixel) {
-        if (this.map.has(pixel.hash)) {
-            this.map.delete(pixel.hash);
+        if (this.map.has(pixel.hash2)) {
+            this.map.delete(pixel.hash2);
             return false;
         }
         return true;

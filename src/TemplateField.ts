@@ -11,7 +11,7 @@ import { log } from './logger';
 
 export class CTemplateField {
     public loadingState = LoadingState.NONE;
-    public path2file = './data/drawme.png';
+    public path2file = './data/template.png';
     // private lastSRC: string = null;
     private cooldown: number = 0;
 
@@ -58,7 +58,8 @@ export class CTemplateField {
 
             log.info(`Template field size: ${img.length} pixels`);
 
-            let myPixels = {};
+            // let myPixels = {};
+            let arPixels = [];
             for (let i = 0; i < img.length; i += 4) {
                 // Skip Alpha channel
                 if (img[i + 3] === 0) {
@@ -67,16 +68,22 @@ export class CTemplateField {
 
                 const x = ((i / 4) % width) + 1;
                 const y = ~~(i / 4 / width) + 1;
-                const colorID = Pixel.findColorIDbyColor([img[i], img[i + 1], img[i + 2]]);
+                const colorId = Pixel.findColorIDbyColor([img[i], img[i + 1], img[i + 2]]);
+                const importance = img[i + 3];
 
                 // TODO: Сделать поиск по приблизительному цвету, если такой не был найден
-                if (colorID >= 0) {
-                    myPixels[Pixel.offset(x, y)] = colorID;
+                if (colorId >= 0) {
+                    arPixels.push(new Pixel({ x, y, colorId, importance }));
+                    // myPixels[Pixel.offset(x, y)] = colorId;
                 }
             }
 
-            log.info(`Loaded ${Object.keys(myPixels).length} pixels`);
-            BattleField.myPixels = myPixels;
+            log.info(`Loaded ${arPixels.length} pixels`);
+            BattleField.arPixels = arPixels;
+
+            // log.info(`Loaded ${Object.keys(myPixels).length} pixels`);
+            // BattleField.myPixels = myPixels;
+
             this.loadingState = LoadingState.LOADED;
             return true;
         } catch (error) {
