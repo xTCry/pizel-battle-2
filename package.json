@@ -4,7 +4,8 @@
     "description": "[Bot] VK Pixel Battle 2020",
     "scripts": {
         "start": "ts-node ./src/index.ts",
-        "dev": "nodemon ./src/index.ts"
+        "dev": "nodemon ./src/index.ts",
+        "rollup:build": "rollup -c rollup.config.ts"
     },
     "author": "xTCry [Vladislav Kh] (https://github.com/xTCry/)",
     "license": "MIT",
@@ -30,6 +31,7 @@
         "yargs": "^16.0.3"
     },
     "devDependencies": {
+        "@types/rollup-plugin-json": "^3.0.2",
         "@types/body-parser": "^1.19.0",
         "@types/cheerio": "^0.22.21",
         "@types/convict": "^5.2.1",
@@ -42,6 +44,11 @@
         "@types/random-useragent": "^0.3.0",
         "@types/ws": "^7.2.7",
         "@types/yargs": "^15.0.8",
+        "rollup": "^1.26.2",
+        "rollup-plugin-commonjs": "^10.1.0",
+        "rollup-plugin-json": "^4.0.0",
+        "rollup-plugin-node-resolve": "^5.2.0",
+        "rollup-plugin-typescript2": "^0.24.3",
         "ts-node": "^9.0.0",
         "typescript": "^4.0.2"
     }
