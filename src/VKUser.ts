@@ -1,4 +1,5 @@
-import { log } from './logger';
+import ansi from 'ansicolor';
+import { customLocator, log } from './logger';
 import { PixelAPI } from './Pixel/PixelAPI';
 import { LoadingState } from './types';
 
@@ -38,7 +39,7 @@ export abstract class VKUser {
         if (this.embedURL) {
             this.api = new PixelAPI(this.embedURL);
             this.userId = this.api.userId;
-            this.debug('User embedURL extracted');
+            this.log.debug('User embedURL extracted');
             return;
         }
 
@@ -55,15 +56,13 @@ export abstract class VKUser {
 
     protected abstract async _start(): Promise<boolean>;
 
-    public debug(...args: any) {
-        if (this.isDebug) {
-            log.info.yellow(`[@${this.userId}]`, ...args);
-        }
-    }
-
-    public debugError(...args: any) {
-        if (this.isDebug) {
-            log.error.yellow(`[@${this.userId}]`, ...args);
-        }
-    }
+    public get log() {
+        return log.info.yellow.configure({
+            '+tag': (lines) => {
+                lines[0] = ansi.lightMagenta(`[@${this.userId.toString().padEnd(9, ' ')}] `) + lines[0];
+                return lines;
+            },
+            locate: customLocator,
+        });
+    };
 }

@@ -23,7 +23,7 @@ export class CBattleField {
 
     private lastSayOnline = 0;
 
-    private healthCheck: HealthCheck = new HealthCheck();
+    public healthCheck: HealthCheck = new HealthCheck();
 
     public freeezedPixels: { [key: number]: number } = {};
     private freezeTimers: { [key: number]: NodeJS.Timeout } = {};
@@ -118,9 +118,10 @@ export class CBattleField {
             this.lastSayOnline = Date.now();
         }
     }
+
     public drawStatus() {
-        log /* .info */.bgDarkGray(`Alive [${this.aliveWarriors.size}/${this.warriors.size}]`);
-        log /* .info */.bgDarkGray(`Connected [${this.connectedWarriors.size}/${this.warriors.size}]`);
+        log.debug.bgDarkGray(`Connected [${this.connectedWarriors.size}/${this.warriors.size}]`);
+        log.debug.bgDarkGray(`Alive [${this.aliveWarriors.size}/${this.connectedWarriors.size}]`);
     }
 
     public Go() {
@@ -160,6 +161,10 @@ export class CBattleField {
 
     public drawPixel(pixel: Pixel) {
         this.mainCanvas[pixel.offset] = pixel.colorId;
+    }
+
+    public unsetPixel(pixel: Pixel) {
+        this.mainCanvas[pixel.offset] = -1;
     }
 
     public setTimerForUpdateFreeze(timeMs: number) {
@@ -343,23 +348,10 @@ export class CBattleField {
                     this.mainCanvas[pixel.offset] = pixel.colorId;
                     // this.mainCanvas[pixelId] = color;
                     // const pixel = new Pixel({ x: x, y: y, colorId: color });
-                    const pixel2 = new Pixel({ x: pixel.x, y: pixel.y, colorId: pixel.colorId });
-                    warrior.sendPixel(pixel2);
-                    warrior.debug('Draw to', pixel2.toString());
+                    warrior.sendPixel(pixel);
+                    warrior.log.debug('Draw to', pixel.toString());
 
                     await sleep(50);
-
-                    if (true) {
-                        this.healthCheck.onPlace(pixel2, warrior);
-                        setTimeout(() => {
-                            if (!this.healthCheck.check(pixel2)) {
-                                warrior.debug('I am alive? (Pixel not ping)');
-                                if (true) {
-                                    warrior.resetWait();
-                                }
-                            }
-                        }, 10e3);
-                    }
                 }
                 // ...
 
@@ -374,7 +366,7 @@ export class CBattleField {
         let warriorsMap = new Map();
 
         for (const [userId, acc] of this.warriors.entries()) {
-            if (acc.connected && acc.isAlive) {
+            if (acc.connected && acc.isAlive && !acc.isMainListener) {
                 warriorsMap.set(userId, acc);
             }
         }

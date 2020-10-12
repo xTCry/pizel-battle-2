@@ -58,10 +58,9 @@ Readline.on('q', (_x: string, _y: string, _colorId: string) => {
         return;
     }
     const [userId, warrior] = value as [number, WarriorAccount];
-    warrior.debug('Send custom Pixel', pixel);
+    warrior.log.debug('Send custom Pixel', pixel);
     warrior.sendPixel(pixel);
 });
-
 
 Readline.on('ws', (_userId: string, cmd: string = '') => {
     const userId = toInt(_userId);
@@ -84,7 +83,7 @@ Readline.on('ws', (_userId: string, cmd: string = '') => {
             break;
         }
         case 'stop': {
-            warrior.close();
+            warrior.close(true);
             break;
         }
     }
@@ -99,7 +98,7 @@ Readline.on('loadfrom', async (url: string = '') => {
         log.info.yellow('Use: loadfrom [url]');
         return;
     }
-    
+
     await TemplateField.loadTemplateField(url);
 });
 
@@ -117,14 +116,9 @@ async function InitApp() {
 
     let usersData = await LoadUsers();
     let embedsData = await LoadEmbeds();
-    let embeds = [
-        ...usersData.filter((e) => !!e.embedURL).map(({ embedURL }) => embedURL),
-        ...embedsData
-    ];
+    let embeds = [...usersData.filter((e) => !!e.embedURL).map(({ embedURL }) => embedURL), ...embedsData];
 
-    const Warroirs = await Promise.all(
-        embeds.filter(Boolean).map((embedURL) => BattleField.addWarrior({ embedURL }))
-    );
+    const Warroirs = await Promise.all(embeds.filter(Boolean).map((embedURL) => BattleField.addWarrior({ embedURL })));
 
     log.info.green(`Loaded ${Warroirs.length}/${embeds.length} Warroirs`);
 
@@ -143,7 +137,7 @@ async function LoadUsers() {
     let usersData = [];
     const arData = dataContent
         .split('\n')
-        .filter((e) => e && e.length > 0 && !e.startsWith('#'))
+        .filter((e) => e && e.length > 0 && !e.startsWith('#') && !e.startsWith(';'))
         .map((e) => e.replace(/\r?\n|\r/g, ''))
         .map((e) => e.split('::'))
         .filter((e) => e.length > 2);
@@ -164,7 +158,10 @@ async function LoadUsers() {
             let [userId, token, , , embedURL] = data;
             embedURL = embedURL
                 .toString()
-                .replace('https://prod-app7148888-a4ac5e7b4372.pages.vk-apps.com', 'https://prod-app7148888-4344348240cf.pages.vk-apps.com');
+                .replace(
+                    'https://prod-app7148888-a4ac5e7b4372.pages.vk-apps.com',
+                    'https://prod-app7148888-4344348240cf.pages.vk-apps.com'
+                );
             usersData.push({ userId, token, embedURL });
         }
     }
@@ -181,8 +178,10 @@ async function LoadEmbeds() {
     }
 
     let embedsData = [];
-    const arData = dataContent.split('\n').filter((e) => e && e.length > 0 && !e.startsWith('#'))
-    .map((e) => e.replace(/\r?\n|\r/g, ''));
+    const arData = dataContent
+        .split('\n')
+        .filter((e) => e && e.length > 0 && !e.startsWith('#') && !e.startsWith(';'))
+        .map((e) => e.replace(/\r?\n|\r/g, ''));
 
     if (!arData.length) {
         log.warn(`Empty data from ./data/${fileName}`);

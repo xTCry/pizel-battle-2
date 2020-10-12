@@ -6,6 +6,7 @@ import WebSocket from 'ws';
 import { LoadingState, MessageType } from '../types';
 import { log } from '../logger';
 import { Pixel, PixelFlag } from './Pixel';
+import { boolean } from 'yargs';
 
 // last name - UpdateChannel
 export class WarriorAccount extends VKUser {
@@ -24,6 +25,7 @@ export class WarriorAccount extends VKUser {
     private retryTime = 1e3;
     private aliveTimer = null;
     private killTimer = null;
+    private missesCounter: number = 0;
 
     public arsenal = { bomb: 0, freeze: 0, pixel: 0, singlePixel: 0 };
 
@@ -79,7 +81,7 @@ export class WarriorAccount extends VKUser {
 
     protected async _start(retry: number = 0) {
         if (this.connected) {
-            this.debug('User already connected');
+            this.log.debug('User already connected');
             return
         }
 
@@ -88,7 +90,7 @@ export class WarriorAccount extends VKUser {
         if (error) {
             this.loadingState = LoadingState.ERROR;
             // throw new Error(error.msg);
-            this.debugError('User load error', error.msg);
+            this.log.error('User load error', error.msg);
             if (retry < 2) {
                 await sleep(1e3);
                 return this._start(++retry);
@@ -98,7 +100,7 @@ export class WarriorAccount extends VKUser {
 
         let { url, data, deadline } = response.response;
 
-        this.debug('Response server URL:', JSON.stringify(url));
+        this.log.debug('Response server URL:', JSON.stringify(url));
 
         // t.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.t)(deadline))
 
@@ -120,7 +122,7 @@ export class WarriorAccount extends VKUser {
     public async run() {
         this.close();
         if (!this.connectionAddress) {
-            this.debugError('Not ws connection address');
+            this.log.error('Not ws connection address');
             return
         }
 
@@ -136,12 +138,12 @@ export class WarriorAccount extends VKUser {
             };
 
             this.ws.onerror = (event) => {
-                this.debugError('WS Error', event.message);
+                this.log.error('WS Error', event.message);
                 return this.reconnect();
             };
 
             this.ws.onclose = () => {
-                this.debug('Connection closed');
+                this.log.debug('Connection closed');
                 this.reconnect();
             };
 
@@ -154,7 +156,7 @@ export class WarriorAccount extends VKUser {
 
                 if ('restart' === e.data) {
                     this.retryTime = 1e3 * Math.random() + 5e3;
-                    this.debug('I am offline');
+                    this.log.debug('I am offline');
                     return;
                 }
 
@@ -166,12 +168,13 @@ export class WarriorAccount extends VKUser {
                     ) {
                         // this.reconnect = () => {};
                         this.retryTime = null;
-                        this.debugError('Error WS', e.data);
+                        this.log.error('Error WS', e.data);
                         return;
                     }
 
                     if ('TOO_FAST_MESSAGE' === e.data) {
                         // ...
+                        return;
                     }
 
                     try {
@@ -181,8 +184,8 @@ export class WarriorAccount extends VKUser {
                         let payload = JSON.parse(e.data);
                         this.dispatch(payload);
                     } catch (error) {
-                        this.debugError(error);
-                        this.debug('ftw payload data', e.data);
+                        this.log.error(error);
+                        this.log.debug('ftw payload data', e.data);
                     }
                 } else if (this.isMainListener) {
                     try {
@@ -191,13 +194,13 @@ export class WarriorAccount extends VKUser {
                         } else {
                             this.reader.toRead.push(e.data);
                             if (this.reader.toRead.length > 1e4) {
-                                this.debugError('Force set bisy false');
+                                this.log.error('Force set bisy false');
                                 this.reader.bisy = !1;
                             }
                         }
                     } catch (error) {
                         this.reader.toRead.push(e.data);
-                        this.debugError(error);
+                        this.log.error(error);
                     }
                 }
             };
@@ -231,13 +234,18 @@ export class WarriorAccount extends VKUser {
 
         this._wait = Date.now() + 59e3;
         this.retryTtl = setTimeout(() => {
-            this._start();
+            this.run();
+            // this._start();
             this.retryCooldown++;
         }, this.retryTime + 1e3);
         this.retryTime *= 1.3;
     }
 
-    public close() {
+    public close(withoutRetry: boolean = false) {
+        if (withoutRetry) {
+            this.retryTime = 0;
+        }
+
         this.connected = false;
         clearTimeout(this.aliveTimer);
         clearTimeout(this.killTimer);
@@ -249,7 +257,7 @@ export class WarriorAccount extends VKUser {
                 this.ws.close();
                 this.ws = null;
             } catch (e) {
-                this.debugError('Error close', e);
+                this.log.error('Error close', e);
             }
         }
     }
@@ -264,7 +272,6 @@ export class WarriorAccount extends VKUser {
             this.killTimer = setTimeout(() => {
                 this.close();
                 // this.debug('Kill tick');
-                // this.reconnect();
             }, 2e3);
         }, 2e3);
     }
@@ -291,19 +298,19 @@ export class WarriorAccount extends VKUser {
             case MessageType.MESSAGE_TYPE_SCORE: {
                 const { bomb, freeze, pixel, singlePixel, usageLost, debug } = payload.v;
                 if (bomb !== this.arsenal.bomb) {
-                    this.debug('[SCORE!] bomb: ', bomb);
+                    this.log.debug('[SCORE!] bomb: ', bomb);
                 }
                 if (freeze !== this.arsenal.freeze) {
                     this.arsenal.freeze = freeze;
-                    this.debug('[SCORE!] freeze: ', freeze);
+                    this.log.debug('[SCORE!] freeze: ', freeze);
                 }
                 if (pixel !== this.arsenal.pixel) {
                     this.arsenal.pixel = pixel;
-                    this.debug('[SCORE!] pixel: ', pixel);
+                    this.log.debug('[SCORE!] pixel: ', pixel);
                 }
                 if (singlePixel !== this.arsenal.singlePixel) {
                     this.arsenal.singlePixel = singlePixel;
-                    this.debug('[SCORE!] singlePixel: ', singlePixel);
+                    this.log.debug('[SCORE!] singlePixel: ', singlePixel);
                 }
                 // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.z)(bomb, freeze, pixel, singlePixel, usageLost));
 
@@ -324,7 +331,6 @@ export class WarriorAccount extends VKUser {
                 if (parseInt(payload.v, 10) > MessageType.V) {
                     // this.reconnect = () => {};
                     this.close();
-                    this._start();
                     // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.x)(!0))
                     // window.location.reload()
                 }
@@ -332,7 +338,7 @@ export class WarriorAccount extends VKUser {
             }
 
             case MessageType.MESSAGE_TYPE_GIFT_LINK: {
-                this.debug('Event gift:', payload.v);
+                this.log.debug('Event gift:', payload.v);
                 break;
             }
 
@@ -345,7 +351,7 @@ export class WarriorAccount extends VKUser {
             }
 
             default: {
-                this.debug('Unknown message type ' + payload.t, payload.v);
+                this.log.debug('Unknown message type ' + payload.t, payload.v);
             }
         }
     }
@@ -367,7 +373,7 @@ export class WarriorAccount extends VKUser {
         }
 
         if (wait !== undefined && wait > 0) {
-            this.debug('wait:', wait);
+            this.log.debug('wait:', wait);
             // this._wait = Math.ceil(wait / 1e3);
             this._wait = Date.now() + wait;
             // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.C)(Math.ceil(wait / 1e3)));
@@ -387,7 +393,7 @@ export class WarriorAccount extends VKUser {
         }
 
         if (code) {
-            this.debug('Evaling code:', code);
+            this.log.debug('Evaling code:', code);
             const newCode = OmyEval(code);
             try {
                 this.sendDebug(`R${parseInt(newCode)}`);
@@ -397,12 +403,12 @@ export class WarriorAccount extends VKUser {
 
     public sendPixel(pixel: Pixel) {
         if (!this.ws) {
-            this.debugError('HelloMthrFcr #1');
+            this.log.error('HelloMthrFcr #1');
             return;
         }
 
         if (!this.isAlive) {
-            this.debug('I am tried');
+            this.log.debug('I am tried');
             return;
         }
 
@@ -413,7 +419,27 @@ export class WarriorAccount extends VKUser {
             this._wait = Date.now() + this.ttl;
             this.resetAliveTimer();
         } catch (error) {
-            this.debugError('sendPixel error', error);
+            this.log.error('sendPixel error', error);
+        }
+
+
+        if (BattleField.healthCheck.isActive) {
+            BattleField.healthCheck.onPlace(pixel, this);
+            setTimeout(() => {
+                if (!BattleField.healthCheck.empty(pixel)) {
+                    ++this.missesCounter;
+                    this.log.debug('I am alive? (Pixel not ping)', this.missesCounter);
+                    BattleField.unsetPixel(pixel);
+                    if (this.missesCounter > 3) {
+                        this.log.error('Warrior resigned');
+                        this.close(true);
+                        return;
+                    }
+                    if (true) {
+                        this.resetWait();
+                    }
+                }
+            }, 10e3);
         }
 
         if (pixel.flag === PixelFlag.BOMB) {
@@ -451,7 +477,7 @@ export class WarriorAccount extends VKUser {
         try {
             this.ws.send(buff);
         } catch (error) {
-            this.debugError('Send BufferPixel error', error);
+            this.log.error('Send BufferPixel error', error);
         }
     }
 }

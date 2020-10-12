@@ -18,7 +18,7 @@ export class CReadline {
         }
     }
 
-    public question(question) {
+    public question(question: string): Promise<string> {
         return new Promise((resolve) => this.rl.question(question, resolve));
     }
 

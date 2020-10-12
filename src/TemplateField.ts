@@ -44,7 +44,9 @@ export class CTemplateField {
         }
 
         try {
-            const resultImg = await loadImage(src);
+            const resultImg = await loadImage(src, {
+                timeout: 180e3
+            });
             log.info('Image loaded');
 
             const { width, height } = resultImg;

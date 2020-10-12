@@ -1,8 +1,33 @@
 import ololog from 'ololog';
 import ansi from 'ansicolor';
 import { createStream, RotatingFileStream, Options } from 'rotating-file-stream';
+import { isBlank } from 'printable-characters';
+import StackTracey from 'stacktracey';
 
 export type StreamWriter = { write: (chunk: any) => void };
+
+
+export const changeLastNonemptyLine = (lines: string[], fn: (line: string) => string) => {
+    for (let i = lines.length - 1; i >= 0; i--) {
+        if (i === 0 || !isBlank(lines[i])) {
+            lines[i] = fn(lines[i]);
+            break;
+        }
+    }
+    return lines;
+};
+
+export const customLocator = (
+    lines: string[],
+    {
+        shift = 0,
+        // @ts-ignore
+        where = new StackTracey().clean.at(1 + shift),
+        join = (a, sep, b) => (a && b ? a + sep + b : a || b),
+        print = ({ calleeShort, fileName = [], line = [] }) =>
+            ansi.darkGray('(' + join(calleeShort, ' @ ', join(fileName, ':', line)) + ')'),
+    }
+) => changeLastNonemptyLine(lines, (line: string) => join(line, ' ', print(where)));
 
 export class CLogger {
     public accessLogStream: Map<string, StreamWriter> = new Map();
