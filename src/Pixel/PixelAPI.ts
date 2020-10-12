@@ -38,6 +38,7 @@ export class PixelAPI {
             const response = await Axios.request({
                 method,
                 url,
+                timeout: 180e3,
                 headers: {
                     ...contentType,
                     ...authHeaders,
@@ -92,6 +93,9 @@ export class PixelAPI {
         prefix += this.startSearch;
 
         if (url) {
+            if (Math.random() > 0.15) {
+                url = url.replace('pixel-dev.w84.vkforms.ru', 'pixel.w83.vkforms.ru');
+            }
             return `${url}${this.startSearch}`;
         }
 

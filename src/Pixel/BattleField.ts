@@ -331,7 +331,9 @@ export class CBattleField {
                         continue;
                     } */
 
-                const pixels = this.arPixels.sort((a, b) => (rand(0, 10) > 6 ? 1 : b.importance - a.importance));
+                const pixels = this.arPixels.sort(
+                    () => Math.random() - 0.5
+                ); /* .sort((a, b) => (rand(0, 10) > 6 ? 1 : b.importance - a.importance)) */
 
                 for (const pixel of pixels) {
                     if (this.mainCanvas[pixel.offset] === pixel.colorId || this.isFreeze(pixel.x, pixel.y)) {
