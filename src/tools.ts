@@ -19,6 +19,13 @@ export async function initPaths(paths: string | string[]) {
     }
 }
 
+export const toInt = (val: any, def: number = 0): number => {
+    if (typeof val === 'string') {
+        return parseInt(val, 10);
+    }
+    return !isNaN(val) && Number.isInteger(val) ? val : def;
+};
+
 export const OmyEval = (pow: any) => {
     const { document } = new JSDOM(`<html><body></body></html>`).window;
     try {

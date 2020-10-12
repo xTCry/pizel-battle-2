@@ -5,7 +5,7 @@ import { PixelReader } from './PixelReader';
 import WebSocket from 'ws';
 import { LoadingState, MessageType } from '../types';
 import { log } from '../logger';
-import { Pixel } from './Pixel';
+import { Pixel, PixelFlag } from './Pixel';
 
 // last name - UpdateChannel
 export class WarriorAccount extends VKUser {
@@ -15,6 +15,7 @@ export class WarriorAccount extends VKUser {
     public connected: boolean = false;
     public dataUrl: string = null;
 
+    private connectionAddress: string = null;
     private ws: WebSocket = null;
     public ttl: number = 30e3;
     private _wait: number = 0;
@@ -77,6 +78,11 @@ export class WarriorAccount extends VKUser {
     }
 
     protected async _start(retry: number = 0) {
+        if (this.connected) {
+            this.debug('User already connected');
+            return
+        }
+
         const { data: response, error } = await this.api.get('start');
 
         if (error) {
@@ -102,21 +108,24 @@ export class WarriorAccount extends VKUser {
 
             // this.loadField().then();
         } else {
-            await this.run(this.api.getWSUrl({ url /* useHTTPS: true, sign, code */ }), data);
+            this.dataUrl = data;
+            this.connectionAddress = this.api.getWSUrl({ url /* useHTTPS: true, sign, code */ });
+            await this.run();
         }
 
         this.loadingState = LoadingState.LOADED;
         return true;
     }
 
-    async run(connection: string, data: string) {
+    public async run() {
         this.close();
-
-        // this.updatesPixel = [];
-        this.dataUrl = data;
+        if (!this.connectionAddress) {
+            this.debugError('Not ws connection address');
+            return
+        }
 
         try {
-            this.ws = new WebSocket(connection, {
+            this.ws = new WebSocket(this.connectionAddress, {
                 headers: {
                     Origin: this.api.API_URL,
                 },
@@ -211,7 +220,7 @@ export class WarriorAccount extends VKUser {
         }
     }
 
-    reconnect() {
+    public reconnect() {
         clearTimeout(this.retryTtl);
         this.connected = false;
         // this.ws = null;
@@ -228,7 +237,7 @@ export class WarriorAccount extends VKUser {
         this.retryTime *= 1.3;
     }
 
-    close() {
+    public close() {
         this.connected = false;
         clearTimeout(this.aliveTimer);
         clearTimeout(this.killTimer);
@@ -245,7 +254,7 @@ export class WarriorAccount extends VKUser {
         }
     }
 
-    resetAliveTimer() {
+    public resetAliveTimer() {
         clearTimeout(this.aliveTimer);
         clearTimeout(this.killTimer);
 
@@ -260,11 +269,11 @@ export class WarriorAccount extends VKUser {
         }, 2e3);
     }
 
-    resetWait() {
+    public resetWait() {
         this._wait = 0;
     }
 
-    sendDebug(e: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
+    protected sendDebug(e: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
         if (!this.ws) {
             return;
         }
@@ -341,7 +350,7 @@ export class WarriorAccount extends VKUser {
         }
     }
 
-    online(data: any) {
+    protected online(data: any) {
         const { code, online, ttl, wait, deadline } = data;
 
         if (online !== undefined) {
@@ -407,21 +416,23 @@ export class WarriorAccount extends VKUser {
             this.debugError('sendPixel error', error);
         }
 
-        /* if (e.flag === PixelFlag.BOMB) {
-            PixelCC.createExplode(e.x, e.y, {}).forEach((e) => {
-                // this.isFreeze(e.x, e.y) || this.drawPixel(e.x, e.y, e.colorId);
+        if (pixel.flag === PixelFlag.BOMB) {
+            Pixel.createExplode(pixel.x, pixel.y, {}).forEach((e) => {
+                if (!BattleField.isFreeze(e.x, e.y)) {
+                    BattleField.drawPixel(e);
+                }
             });
             // window.dispatchEvent(new Event('explore'));
-        } else if (e.flag === PixelFlag.FREZE) {
-            var a = PixelCC.createFreeze(e.x, e.y, {}),
-                r = Date.now() + PixelCC.FREEZE_TIME + 200;
-            a.forEach((e) => {
-                this.freeezedPixels[Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.r)(e.x, e.y)] = r;
+        } else if (pixel.flag === PixelFlag.FREZE) {
+            const freezPixels = Pixel.createFreeze(pixel.x, pixel.y, {});
+            const timeToFreez = Date.now() + Pixel.FREEZE_TIME + 200;
+            freezPixels.forEach((e) => {
+                BattleField.freeezedPixels[pixel.offset] = timeToFreez;
             });
-            this.setTimerForUpdateFreeze(r);
+            BattleField.setTimerForUpdateFreeze(timeToFreez);
         } else {
-            this.drawPixel(e.x, e.y, e.colorId);
-        } */
+            BattleField.drawPixel(pixel);
+        }
     }
 
     /**

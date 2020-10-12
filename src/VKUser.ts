@@ -31,7 +31,6 @@ export abstract class VKUser {
     public async start(): Promise<boolean> {
         this.loadingState = LoadingState.LAODING;
         await this.extractEmbedURL();
-        this.debug('User embedURL extracted');
         return await this._start();
     }
 
@@ -39,6 +38,7 @@ export abstract class VKUser {
         if (this.embedURL) {
             this.api = new PixelAPI(this.embedURL);
             this.userId = this.api.userId;
+            this.debug('User embedURL extracted');
             return;
         }
 

@@ -17,7 +17,7 @@ export class CTemplateField {
 
     constructor() {}
 
-    public async loadTemplateField() {
+    public async loadTemplateField(_IMG_URL?: string) {
         if (Date.now() - this.cooldown <= 10 * 1e3 || this.loadingState === LoadingState.LAODING) {
             return false;
         }
@@ -31,7 +31,7 @@ export class CTemplateField {
 
         let src: string | Buffer = null;
 
-        const IMG_URL = config.get('IMG_URL');
+        const IMG_URL = _IMG_URL || config.get('IMG_URL');
         if (IMG_URL) {
             src = `${IMG_URL}?r=${rand(11111, 199999)}`;
         } else if (Fs.existsSync(this.path2file)) {
@@ -78,7 +78,7 @@ export class CTemplateField {
                 }
             }
 
-            log.info(`Loaded ${arPixels.length} pixels`);
+            log.info.green(`Loaded ${arPixels.length} pixels`);
             BattleField.arPixels = arPixels;
 
             // log.info(`Loaded ${Object.keys(myPixels).length} pixels`);
@@ -93,7 +93,7 @@ export class CTemplateField {
         return false;
     }
 
-    watchFolder(folder: string) {
+    public watchFolder(folder: string) {
         try {
             log.info(`Watching for folder changes on: ${folder}`);
 

@@ -1,5 +1,5 @@
 import { rand, sleep } from '../tools';
-import { colorIndexDecode, Pixel } from './Pixel';
+import { colorIndexDecode, Pixel, PixelFlag } from './Pixel';
 import { WarriorAccount } from './PixelAccount';
 import { VKUserParams } from '../VKUser';
 import { LoadingState } from '../types';
@@ -19,11 +19,16 @@ export class CBattleField {
     /**
      * Массив воинов (аккаунтов)
      */
-    protected warriors: Map<number, WarriorAccount> = new Map();
+    public warriors: Map<number, WarriorAccount> = new Map();
 
     private lastSayOnline = 0;
 
     private healthCheck: HealthCheck = new HealthCheck();
+
+    public freeezedPixels: { [key: number]: number } = {};
+    private freezeTimers: { [key: number]: NodeJS.Timeout } = {};
+    private freezeOverdraw: { [key: number]: Pixel[] } = {};
+    private updatesPixel: Pixel[] = [];
 
     /**
      * Наше загруженное изображение в пикселях
@@ -40,11 +45,6 @@ export class CBattleField {
      * Текущии изменения всего поля получаемые через WebSocket
      */
     public mainCanvas: Record<number, number> = {};
-
-    // в данный момент процесс зарисовки? (последнее время)
-    public InPocess = 0;
-
-    public typeDraw = 1; // 1 - protect, 2 - spam
 
     /**
      * ID главного слушателя сокета
@@ -111,13 +111,16 @@ export class CBattleField {
         return false;
     }
 
-    public sayOnline(e: number) {
+    public sayOnline(usersOnline: number) {
         if (Date.now() - this.lastSayOnline > 30e3) {
-            log /* .info */.bgDarkGray(`Online: ${e} users`);
-            log /* .info */.bgDarkGray(`Alive [${this.aliveWarriors.size}/${this.warriors.size}]`);
-            log /* .info */.bgDarkGray(`Connected [${this.connectedWarriors.size}/${this.warriors.size}]`);
+            log /* .info */.bgDarkGray(`Online: ${usersOnline} users`);
+            this.drawStatus();
             this.lastSayOnline = Date.now();
         }
+    }
+    public drawStatus() {
+        log /* .info */.bgDarkGray(`Alive [${this.aliveWarriors.size}/${this.warriors.size}]`);
+        log /* .info */.bgDarkGray(`Connected [${this.connectedWarriors.size}/${this.warriors.size}]`);
     }
 
     public Go() {
@@ -130,7 +133,67 @@ export class CBattleField {
 
     public onNewPixel(pixel: Pixel) {
         this.healthCheck.onPixel(pixel);
+        // this.drawPixel(pixel);
+
+        if (this.isFreeze(pixel.x, pixel.y)) {
+            if (!this.freezeOverdraw[pixel.offset]) {
+                this.freezeOverdraw[pixel.offset] = [pixel];
+            }
+            this.freezeOverdraw[pixel.offset].push(pixel);
+        } else {
+            if (this.originalFieldLoadingState === LoadingState.LOADED) {
+                this.drawPixel(pixel);
+            } else {
+                this.updatesPixel.push(pixel);
+                // this.overDrawDot(e, t, n, a) &&
+                //     PixelFlag.NONE === pixel.flag &&
+                //     this.store.dispatch(Object(_modules_EventList__WEBPACK_IMPORTED_MODULE_11__.m)(a, e, t));
+            }
+        }
+
+        if (pixel.flag === PixelFlag.FREZE || pixel.flag === PixelFlag.FREZE_CENTER) {
+            let timeMs = Date.now() + Pixel.FREEZE_TIME;
+            this.freeezedPixels[pixel.offset] = timeMs;
+            this.setTimerForUpdateFreeze(timeMs);
+        }
+    }
+
+    public drawPixel(pixel: Pixel) {
         this.mainCanvas[pixel.offset] = pixel.colorId;
+    }
+
+    public setTimerForUpdateFreeze(timeMs: number) {
+        const timerId = timeMs - (timeMs % 1e3) + 1e3;
+        if (this.freezeTimers[timerId]) {
+            return;
+        }
+
+        this.freezeTimers[timerId] = setTimeout(() => {
+            delete this.freezeTimers[timerId];
+
+            const nowMs = Date.now();
+            let pixelOffsets = [];
+
+            Object.keys(this.freeezedPixels).forEach((pixelOffset) => {
+                if (this.freeezedPixels[pixelOffset] <= nowMs) {
+                    pixelOffsets.push(pixelOffset);
+                }
+            });
+
+            pixelOffsets.forEach((pixelOffset) => {
+                delete this.freeezedPixels[pixelOffset];
+                if (this.freezeOverdraw[pixelOffset]) {
+                    // log.debug('Freeze overdraw:', pixelOffset);
+                    this.freezeOverdraw[pixelOffset].forEach((pixel) => {
+                        this.drawPixel(pixel);
+                    });
+                }
+                delete this.freezeOverdraw[pixelOffset];
+            });
+
+            // this.store.dispatch(Object(_modules_Game__WEBPACK_IMPORTED_MODULE_6__.E)());
+            // window.requestAnimationFrame(redraw);
+        }, Math.max(timerId - Date.now(), 500));
     }
 
     public async loadFieldData(account: WarriorAccount) {
@@ -150,40 +213,39 @@ export class CBattleField {
 
             log.info.green('Origin field loaded');
 
-            // const pixelsFreez = response.toString().substr(PixelCC.MAX_WIDTH * PixelCC.MAX_HEIGHT);
+            const pixelsFreez = response.toString().substr(Pixel.MAX_WIDTH * Pixel.MAX_HEIGHT);
 
-            /* if (pixelsFreez) {
+            if (pixelsFreez) {
                 try {
-                    Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.g)(pixelsFreez);
-                    JSON.parse(pixelsFreez).forEach(function (t) {
-                        var n = Object(
-                                _Users_i_nedzvetskiy_projects_pixel_frontend_node_modules_babel_preset_react_app_node_modules_babel_runtime_helpers_esm_slicedToArray__WEBPACK_IMPORTED_MODULE_0__.a
-                            )(t, 2),
-                            a = n[0],
-                            r = n[1],
-                            o = Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.x)(a),
-                            i = o.x,
-                            c = o.y;
-                        _Pixel__WEBPACK_IMPORTED_MODULE_7__.a.createFreeze(i, c, {}).forEach(function (t) {
-                            this.freeezedPixels[Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.r)(t.x, t.y)] = r;
+                    JSON.parse(pixelsFreez).forEach((sData) => {
+                        if (!Array.isArray(sData) || sData.length < 1) {
+                            return;
+                        }
+
+                        /* slicedToArray(t, 2) */
+                        let [offsetData, timeToFreez] = sData[0];
+                        let { x, y } = Pixel.unOffset(offsetData);
+
+                        // console.log('Freez', { x, y }, timeToFreez);
+
+                        Pixel.createFreeze(x, y).forEach((t) => {
+                            this.freeezedPixels[Pixel.offset(t.x, t.y)] = timeToFreez;
                         });
-                        this.setTimerForUpdateFreeze(r);
+                        this.setTimerForUpdateFreeze(timeToFreez);
                     });
                 } catch (r) {
-                    Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.f)(r);
+                    console.error(r);
                 }
-            } */
+            }
 
             /* window.Uint8ClampedArray && window.ImageData
                 ? Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.i)(pixelsData, this.context)
-                : Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.h)(pixelsData, this.context);
+                : Object(_helpers__WEBPACK_IMPORTED_MODULE_5__.h)(pixelsData, this.context); */
 
-            account.updatesPixel.forEach((t) => {
-                var n = t.x,
-                    a = t.y,
-                    r = t.color;
-                this.drawPixel(n, a, r);
-            }); */
+            this.updatesPixel.forEach((pixel) => {
+                this.drawPixel(pixel);
+            });
+            this.updatesPixel = [];
 
             this.originalFieldLoadingState = LoadingState.LOADED;
         } catch (error) {
@@ -232,6 +294,9 @@ export class CBattleField {
         }
     }
 
+    /**
+     * Цикл для отрисовки шаблона
+     */
     private async loop() {
         while (true) {
             try {
@@ -261,10 +326,10 @@ export class CBattleField {
                         continue;
                     } */
 
-                const pixels = this.arPixels.sort((a, b) => (rand(0, 5) === 3 ? 1 : b.importance - a.importance));
+                const pixels = this.arPixels.sort((a, b) => (rand(0, 10) > 6 ? 1 : b.importance - a.importance));
 
                 for (const pixel of pixels) {
-                    if (this.mainCanvas[pixel.offset] === pixel.colorId) {
+                    if (this.mainCanvas[pixel.offset] === pixel.colorId || this.isFreeze(pixel.x, pixel.y)) {
                         continue;
                     }
 
@@ -327,6 +392,10 @@ export class CBattleField {
         }
 
         return warriorsMap;
+    }
+
+    isFreeze(x: number, y: number) {
+        return this.freeezedPixels[Pixel.offset(x, y)] > Date.now();
     }
 }
 

@@ -1,4 +1,5 @@
 import hash from 'object-hash';
+import { toInt } from '../tools';
 
 export enum PixelFlag {
     NONE = 0,
@@ -12,7 +13,7 @@ export enum PixelFlag {
     FLAG_PIXEL = 9,
 }
 
-export type ColorId = number;
+export type ColorId = number; // keyof typeof colorIndexDecode;
 
 export const colorIndexDecode = {
     0: 0,
@@ -41,13 +42,6 @@ export const colorIndexDecode = {
     n: 23,
     o: 24,
     p: 25,
-};
-
-const toInt = (val: any, def: number = 0): number => {
-    if (typeof val === 'string') {
-        return parseInt(val, 10);
-    }
-    return !isNaN(val) && Number.isInteger(val) ? val : def;
 };
 
 export class Pixel {
@@ -117,110 +111,110 @@ export class Pixel {
         ].filter((e) => e.isValid());
     };
 
-    static createFreeze = function (e, t, n) {
+    static createFreeze = function (x: number, y: number, userData: { id?: number; groupId?: number } = {}) {
         return [
             new Pixel({
-                x: e,
-                y: t,
+                x: x,
+                y: y,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e,
-                y: t + 1,
+                x: x,
+                y: y + 1,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e,
-                y: t - 1,
+                x: x,
+                y: y - 1,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e + 1,
-                y: t,
+                x: x + 1,
+                y: y,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e + 1,
-                y: t + 1,
+                x: x + 1,
+                y: y + 1,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e + 1,
-                y: t - 1,
+                x: x + 1,
+                y: y - 1,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e - 1,
-                y: t,
+                x: x - 1,
+                y: y,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e - 1,
-                y: t + 1,
+                x: x - 1,
+                y: y + 1,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e - 1,
-                y: t - 1,
+                x: x - 1,
+                y: y - 1,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e + 2,
-                y: t,
+                x: x + 2,
+                y: y,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e - 2,
-                y: t,
+                x: x - 2,
+                y: y,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e,
-                y: t + 2,
+                x: x,
+                y: y + 2,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
             new Pixel({
-                x: e,
-                y: t - 2,
+                x: x,
+                y: y - 2,
                 colorId: Pixel.EXPLORE_COLOR,
-                userId: n.id,
-                groupId: n.groupId,
+                userId: userData.id,
+                groupId: userData.groupId,
                 flag: PixelFlag.FREZE,
             }),
         ].filter((e) => e.isValid());
@@ -241,7 +235,7 @@ export class Pixel {
         return this.isValidRange();
     }
 
-    hasFlag(e) {
+    hasFlag(e: PixelFlag) {
         return this.flag === e;
     }
 

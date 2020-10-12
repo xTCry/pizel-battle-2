@@ -26,8 +26,10 @@ export class PixelReader {
             } else {
                 this.bisy = false;
             }
+            return true;
         } catch (err) {
             this.bisy = false;
         }
+        return false;
     }
 }
